@@ -21,10 +21,115 @@ on:
         required: true
         type: string
 
-      demc:
-        description: "Integrate DontEatMyContent"
+      all_tweaks:
+        description: "Build all tweaks (turn off to use the selections below)"
         default: true
         required: false
+        type: boolean
+
+      youpip:
+        description: "Select YouPiP (includes YTVideoOverlay dependency)"
+        default: false
+        type: boolean
+
+      ytuhd:
+        description: "Select YTUHD"
+        default: false
+        type: boolean
+
+      ryd:
+        description: "Select Return YouTube Dislikes"
+        default: false
+        type: boolean
+
+      yougroupsettings:
+        description: "Select YouGroupSettings"
+        default: false
+        type: boolean
+
+      ytvideooverlay:
+        description: "Select YTVideoOverlay"
+        default: false
+        type: boolean
+
+      ytabconfig:
+        description: "Select YTABConfig"
+        default: false
+        type: boolean
+
+      youquality:
+        description: "Select YouQuality"
+        default: false
+        type: boolean
+
+      youspeed:
+        description: "Select YouSpeed"
+        default: false
+        type: boolean
+
+      demc:
+        description: "Select DontEatMyContent"
+        default: false
+        type: boolean
+
+      youmute:
+        description: "Select YouMute"
+        default: false
+        type: boolean
+
+      youloop:
+        description: "Select YouLoop"
+        default: false
+        type: boolean
+
+      alderis:
+        description: "Select Alderis"
+        default: false
+        type: boolean
+
+      youslider:
+        description: "Select YouSlider"
+        default: false
+        type: boolean
+
+      youchoosequality:
+        description: "Select YouChooseQuality"
+        default: false
+        type: boolean
+
+      ytsilentvote:
+        description: "Select YTSilentVote"
+        default: false
+        type: boolean
+
+      youshare:
+        description: "Select YouShare"
+        default: false
+        type: boolean
+
+      gonerino:
+        description: "Select Gonerino"
+        default: false
+        type: boolean
+
+      ytweaks:
+        description: "Select YTweaks"
+        default: false
+        type: boolean
+
+      yougetcaption:
+        description: "Select YouGetCaption"
+        default: false
+        type: boolean
+
+      ytflags:
+        description: "Select YTFlags"
+        default: false
+        type: boolean
+
+      iamyoutube:
+        description: "Select IAmYouTube"
+        default: false
         type: boolean
 
 
@@ -80,6 +185,32 @@ jobs:
           git checkout
           mv *.sdk $THEOS/sdks
 
+      - name: Add Preferences private framework stub
+        if: ${{ inputs.all_tweaks || inputs.alderis }}
+        run: |
+          git clone --quiet --depth=1 -n --filter=tree:0 https://github.com/chrisharper22/sdks.git patched-sdks
+          cd patched-sdks
+          git sparse-checkout set --no-cone iPhoneOS16.2.sdk/System/Library/PrivateFrameworks/Preferences.framework
+          git checkout
+
+          stub="iPhoneOS16.2.sdk/System/Library/PrivateFrameworks/Preferences.framework"
+          sdk="$THEOS/sdks/iPhoneOS18.6.sdk/System/Library"
+
+          # The patched stub contains `platform: (null)`, which modern TAPI
+          # rejects as malformed. Normalize it before installing the copies.
+          sed -i '' 's/platform:[[:space:]]*(null)/platform: ios/' "$stub/Preferences.tbd"
+          if grep -q '(null)' "$stub/Preferences.tbd"; then
+            echo "::error::Preferences.tbd still contains an invalid platform"
+            exit 1
+          fi
+
+          # Alderis's legacy lcpshim declares Preferences as a regular
+          # framework, so ld only searches System/Library/Frameworks.
+          mkdir -p "$sdk/Frameworks" "$sdk/PrivateFrameworks"
+          cp -R "$stub" "$sdk/Frameworks/"
+          cp -R "$stub" "$sdk/PrivateFrameworks/"
+          test -f "$sdk/Frameworks/Preferences.framework/Preferences.tbd"
+
       - name: Install cyan and tbd
         run: |
           pipx install --force https://github.com/asdfzxcvbn/pyzule-rw/archive/main.zip
@@ -100,7 +231,7 @@ jobs:
       - name: Clone YouTubeHeader
         run: |
            git clone --quiet --depth=1 https://github.com/PoomSmart/YouTubeHeader.git $THEOS/include/YouTubeHeader
-           if [ "${{ inputs.demc }}" = "true" ]; then
+           if [ "${{ inputs.all_tweaks }}" = "true" ] || [ "${{ inputs.demc }}" = "true" ]; then
             cp -r "$THEOS/include/YouTubeHeader" "$THEOS/include/YTHeaders"
            fi
 
@@ -108,80 +239,99 @@ jobs:
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/PSHeader.git $THEOS/include/PSHeader
 
       - name: Clone YouPiP
+        if: ${{ inputs.all_tweaks || inputs.youpip }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouPiP.git
     
       - name: Clone YTUHD (with submodules)
+        if: ${{ inputs.all_tweaks || inputs.ytuhd }}
         run: git clone --quiet --depth=1 --recurse-submodules --shallow-submodules https://github.com/PoomSmart/YTUHD.git
            
       - name: Clone Return-YouTube-Dislikes
+        if: ${{ inputs.all_tweaks || inputs.ryd }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/Return-YouTube-Dislikes.git
 
       - name: Clone YouGroupSettings
+        if: ${{ inputs.all_tweaks || inputs.yougroupsettings }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouGroupSettings.git
            
       - name: Clone YTVideoOverlay
+        if: ${{ inputs.all_tweaks || inputs.ytvideooverlay || inputs.youpip }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YTVideoOverlay.git
           
       - name: Clone YTABConfig
+        if: ${{ inputs.all_tweaks || inputs.ytabconfig }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YTABConfig.git
                   
       - name: Clone YouQuality
+        if: ${{ inputs.all_tweaks || inputs.youquality }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouQuality.git
 
       - name: Clone YouSpeed
+        if: ${{ inputs.all_tweaks || inputs.youspeed }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouSpeed.git
 
       - name: Clone DontEatMyContent
-        if: ${{ inputs.demc }}
+        if: ${{ inputs.all_tweaks || inputs.demc }}
         run: git clone --quiet --depth=1 https://github.com/therealFoxster/DontEatMyContent.git
 
       - name: Clone YouMute
+        if: ${{ inputs.all_tweaks || inputs.youmute }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouMute.git
     
       - name: Clone YouLoop
+        if: ${{ inputs.all_tweaks || inputs.youloop }}
         run: git clone --quiet --depth=1 https://github.com/bhackel/YouLoop.git
 
       - name: Clone Alderis
+        if: ${{ inputs.all_tweaks || inputs.alderis }}
         run: git clone --quiet --depth=1 https://github.com/hbang/Alderis.git
 
       - name: Clone YouSlider
+        if: ${{ inputs.all_tweaks || inputs.youslider }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouSlider.git
 
       - name: Clone YouChooseQuality
+        if: ${{ inputs.all_tweaks || inputs.youchoosequality }}
         run: git clone --quiet https://github.com/PoomSmart/YouChooseQuality.git
 
       - name: Clone YTSilentVote
+        if: ${{ inputs.all_tweaks || inputs.ytsilentvote }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YTSilentVote.git
 
       - name: Clone YouShare
+        if: ${{ inputs.all_tweaks || inputs.youshare }}
         run: git clone --quiet --depth=1 https://github.com/Tonwalter888/YouShare.git
 
       - name: Clone Gonerino
+        if: ${{ inputs.all_tweaks || inputs.gonerino }}
         run: git clone --quiet --depth=1 https://github.com/castdrian/Gonerino.git
 
       - name: Clone YTweaks
+        if: ${{ inputs.all_tweaks || inputs.ytweaks }}
         run: git clone --quiet --depth=1 https://github.com/fosterbarnes/YTweaks.git
 
       - name: Clone YouGetCaption
+        if: ${{ inputs.all_tweaks || inputs.yougetcaption }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/YouGetCaption.git
         
       - name: Clone YTFlags
+        if: ${{ inputs.all_tweaks || inputs.ytflags }}
         run: git clone --quiet --depth=1 https://github.com/Tonwalter888/YTFlags.git
 
       - name: Clone IAmYouTube
+        if: ${{ inputs.all_tweaks || inputs.iamyoutube }}
         run: git clone --quiet --depth=1 https://github.com/PoomSmart/IAmYouTube.git
 
       - name: Clone and build YTPlaybackFix
+        continue-on-error: true
         run: |
             git clone --quiet --depth=1 https://github.com/Mark02-2012/YTPlaybackFix
             cd YTPlaybackFix && make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
             mv packages/*.deb ${{ github.workspace }}/ytplaybackfix.deb
 
-      # - name: Clone VolumeBoostYT
-      #   if: ${{ inputs.volboost }}
-      #   run: git clone --quiet --depth=1 https://github.com/VasirakCalgux/VolumeBoostYT.git
-        
       - name: Build YouPiP
+        if: ${{ inputs.all_tweaks || inputs.youpip }}
+        continue-on-error: true
         run: |
           cd YouPiP
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
@@ -189,6 +339,8 @@ jobs:
 
 
       - name: Build YTUHD
+        if: ${{ inputs.all_tweaks || inputs.ytuhd }}
+        continue-on-error: true
         run: |
           cd YTUHD
           git submodule sync --recursive
@@ -199,137 +351,192 @@ jobs:
           mv packages/*.deb ${{ github.workspace }}/YTUHD.deb
 
       - name: Build Return-YouTube-Dislikes
+        if: ${{ inputs.all_tweaks || inputs.ryd }}
+        continue-on-error: true
         run: |
           cd Return-YouTube-Dislikes
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ryd.deb
 
       - name: Build YouGroupSettings
+        if: ${{ inputs.all_tweaks || inputs.yougroupsettings }}
+        continue-on-error: true
         run: |
           cd YouGroupSettings
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ygs.deb
 
       - name: Build YTVideoOverlay
+        if: ${{ inputs.all_tweaks || inputs.ytvideooverlay || inputs.youpip }}
+        continue-on-error: true
         run: |
           cd YTVideoOverlay
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytvo.deb
 
       - name: Build YTABConfig
+        if: ${{ inputs.all_tweaks || inputs.ytabconfig }}
+        continue-on-error: true
         run: |
           cd YTABConfig
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytabconfig.deb
 
       - name: Build YouQuality
+        if: ${{ inputs.all_tweaks || inputs.youquality }}
+        continue-on-error: true
         run: |
           cd YouQuality
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youquality.deb
 
       - name: Build YouSpeed
+        if: ${{ inputs.all_tweaks || inputs.youspeed }}
+        continue-on-error: true
         run: |
           cd YouSpeed
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youspeed.deb
 
       - name: Build DontEatMyContent
-        if: ${{ inputs.demc }}
+        if: ${{ inputs.all_tweaks || inputs.demc }}
+        continue-on-error: true
         run: |
           cd DontEatMyContent
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/demc.deb
 
       - name: Build YouMute
+        if: ${{ inputs.all_tweaks || inputs.youmute }}
+        continue-on-error: true
         run: |
           cd YouMute
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ym.deb
 
       - name: Build YouLoop
+        if: ${{ inputs.all_tweaks || inputs.youloop }}
+        continue-on-error: true
         run: |
           cd YouLoop
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youloop.deb
 
       - name: Build YouSlider
+        if: ${{ inputs.all_tweaks || inputs.youslider }}
+        continue-on-error: true
         run: |
           cd YouSlider
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youslider.deb
 
-      - name: Build Alderis
+      - name: ${{ (inputs.all_tweaks || inputs.alderis) && 'Build Alderis' || 'Skip Alderis (not selected)' }}
+        if: ${{ inputs.all_tweaks || inputs.alderis }}
+        continue-on-error: true
         run: |
           cd Alderis
-          make clean package DEBUG=0 FINALPACKAGE=1 ARCHS=arm64
+          make clean
+
+          # lcpshim only searches its local staged Frameworks directory.
+          # Populate it after `make clean`, which removes the .theos tree.
+          frameworks="$PWD/.theos/obj/install/Library/Frameworks"
+          mkdir -p "$frameworks"
+          cp -R "$THEOS/sdks/iPhoneOS18.6.sdk/System/Library/Frameworks/Preferences.framework" "$frameworks/"
+          test -f "$frameworks/Preferences.framework/Preferences.tbd"
+
+          make package DEBUG=0 FINALPACKAGE=1 ARCHS=arm64
           mv packages/*.deb ${{ github.workspace }}/alderis.deb
 
       - name: Build YouChooseQuality
+        if: ${{ inputs.all_tweaks || inputs.youchoosequality }}
+        continue-on-error: true
         run: |
           cd YouChooseQuality
           git checkout 1585a3691b2ef0b59d42c40c31639fd8b79e2cd4
+
+          # Current Logos drops the property access from `%orig.mutableCopy`,
+          # producing an invalid NSArray-to-NSMutableArray assignment.
+          sed -i '' 's/%orig\.mutableCopy/[%orig mutableCopy]/' Settings.x
+          grep -Fq 'NSMutableArray *mutableCategories = [%orig mutableCopy];' Settings.x
+
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youchoose.deb
 
       - name: Build YTSilentVote
+        if: ${{ inputs.all_tweaks || inputs.ytsilentvote }}
+        continue-on-error: true
         run: |
           cd YTSilentVote
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytnovote.deb  
 
       - name: Build YouShare
+        if: ${{ inputs.all_tweaks || inputs.youshare }}
+        continue-on-error: true
         run: |
           cd YouShare
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/youshare.deb
           
       - name: Build Gonerino
+        if: ${{ inputs.all_tweaks || inputs.gonerino }}
+        continue-on-error: true
         run: |
           cd Gonerino
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/gonerino.deb
 
       - name: Build YouGetCaption
+        if: ${{ inputs.all_tweaks || inputs.yougetcaption }}
+        continue-on-error: true
         run: |
           cd YouGetCaption
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ygc.deb
 
       - name: Build YTweaks
+        if: ${{ inputs.all_tweaks || inputs.ytweaks }}
+        continue-on-error: true
         run: |
           cd YTweaks
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytweaks.deb
 
       - name: Build YTFlags
+        if: ${{ inputs.all_tweaks || inputs.ytflags }}
+        continue-on-error: true
         run: |
           cd YTFlags
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/ytflags.deb
 
       - name: Build IAmYouTube
+        if: ${{ inputs.all_tweaks || inputs.iamyoutube }}
+        continue-on-error: true
         run: |
           cd IAmYouTube
           make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
           mv packages/*.deb ${{ github.workspace }}/imyt.deb
 
-      # - name: Build VolumeBoostYT
-      #   if: ${{ inputs.volboost }}
-      #   run: |
-      #     cd VolumeBoostYT
-      #     make clean package DEBUG=0 FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
-      #     mv packages/*.deb ${{ github.workspace }}/volboostyt.deb
-
       - name: Inject Tweaks Into IPA
         run: |
-          tweaks="OpenYouTubeSafariExtension.appex"
+          shopt -s nullglob
+          built_tweaks=( *.deb )
 
-          for f in *.deb; do
-            tweaks="$tweaks $f"
-          done
+          if (( ${#built_tweaks[@]} == 0 )); then
+            echo "::error::No successfully built or downloaded tweak packages were found."
+            exit 1
+          fi
 
-          cyan -i youtube.ipa -o YTLitePlusEXTRA_${{ env.YT_VERSION }}_v5.2.1_cracked.ipa -uwef $tweaks -n "${{ inputs.display_name }}" -b ${{ inputs.bundle_id }}
+          tweaks=( OpenYouTubeSafariExtension.appex "${built_tweaks[@]}" )
+
+          echo "Injecting the following components:"
+          printf '  - %s\n' "${tweaks[@]}"
+
+          cyan -i youtube.ipa -o YTLitePlusEXTRA_${{ env.YT_VERSION }}_v5.2.1_cracked.ipa \
+            -uwef "${tweaks[@]}" \
+            -n "${{ inputs.display_name }}" \
+            -b "${{ inputs.bundle_id }}"
 
       - name: Create a Draft Release
         uses: softprops/action-gh-release@v3
